@@ -10,8 +10,12 @@ $scripts=Get-ChildItem (Join-Path $upstream 'src/*.js') | Sort-Object Name | For
     if($_.Name -eq '08_planner.js') {
         if(-not $s.Contains('  extra: false,')) { throw 'JIZURA default extra setting was not found' }
         $s=$s.Replace('  extra: false,','  extra: true,')
+        if(-not $s.Contains('offset: 0.4,') -or -not $s.Contains('T.offset ?? 0.4')) { throw 'JIZURA default start time was not found' }
+        $s=$s.Replace('offset: 0.4,','offset: 0,').Replace('T.offset ?? 0.4','T.offset ?? 0')
     }
     if($_.Name -eq '12_ui.js') {
+        if(-not $s.Contains('S.project.timing.offset ?? 0.4')) { throw 'JIZURA start-time field was not found' }
+        $s=$s.Replace('S.project.timing.offset ?? 0.4','S.project.timing.offset ?? 0')
         $s=$s.Replace('J.ui = S;', 'J.ui = S; J.aviSetProject = (p,a) => { pause(); S.audio=a; S.project=mergeProject(p); syncUI(); replan(); S.t=0; S.need=true; };')
     }
     if($_.Name -eq '02_fonts.js') {
