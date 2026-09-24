@@ -12,24 +12,6 @@ $scripts=Get-ChildItem (Join-Path $upstream 'src/*.js') | Sort-Object Name | For
         $s=$s.Replace('  extra: false,','  extra: true,')
     }
     if($_.Name -eq '12_ui.js') {
-        $oldLoad='function loadLocal() { try { const s = localStorage.getItem(LS_KEY); if (s) return mergeProject(JSON.parse(s)); } catch (e) {} return mergeProject(null); }'
-        if(-not $s.Contains($oldLoad)) { throw 'JIZURA saved-project loader was not found' }
-        $newLoad=@'
-function loadLocal() {
-  try {
-    const marker = 'jizura.aviutl2.extraDefault.v1.4';
-    const first = localStorage.getItem(marker) !== '1';
-    const saved = localStorage.getItem(LS_KEY);
-    const project = saved ? JSON.parse(saved) : null;
-    if (first) {
-      if (project) { project.extra = true; localStorage.setItem(LS_KEY, JSON.stringify(project)); }
-      localStorage.setItem(marker, '1');
-    }
-    return mergeProject(project);
-  } catch (e) { return mergeProject(null); }
-}
-'@
-        $s=$s.Replace($oldLoad,$newLoad)
         $s=$s.Replace('J.ui = S;', 'J.ui = S; J.aviSetProject = (p,a) => { pause(); S.audio=a; S.project=mergeProject(p); syncUI(); replan(); S.t=0; S.need=true; };')
     }
     if($_.Name -eq '02_fonts.js') {
