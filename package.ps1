@@ -16,6 +16,7 @@ $files = @(
     @('dist/web/engine.js', 'web/engine.js'),
     @('dist/web/bridge.js', 'web/bridge.js'),
     @('README.md', 'README.md'),
+    @('BUILD.md', 'BUILD.md'),
     @('LICENSE', 'LICENSE'),
     @('dist/LICENSE-JIZURA.txt', 'licenses/LICENSE-JIZURA.txt'),
     @('dist/LICENSE-aviutl2-rs.txt', 'licenses/LICENSE-aviutl2-rs.txt'),
