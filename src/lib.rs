@@ -93,7 +93,7 @@ const COLOR_ITEMS:[(&str,&str);6]=[("背景色","bg"),("文字色","fg"),("補�
 const FONT_ITEMS:[(&str,&str);3]=[("見出しフォント","display"),("明朝枠フォント","serif"),("小さな文字フォント","body")];
 fn font_entries()->&'static [(String,String)] {
     FONT_CATALOG.get_or_init(||{
-        let data:Value=serde_json::from_str(include_str!("../../JIZURA-main/ae/data.json")).expect("invalid font catalog");
+        let data:Value=serde_json::from_str(include_str!("../upstream/ae/data.json")).expect("invalid font catalog");
         data["fonts"].as_object().into_iter().flat_map(|o|o.iter()).filter_map(|(key,v)|Some((key.clone(),v["label"].as_str()?.to_owned()))).collect()
     })
 }

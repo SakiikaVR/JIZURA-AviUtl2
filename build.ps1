@@ -1,10 +1,11 @@
 $ErrorActionPreference='Stop'
 $root=Split-Path $PSScriptRoot -Parent
+$upstream=Join-Path $PSScriptRoot 'upstream'
 $out=Join-Path $PSScriptRoot 'dist'
 $web=Join-Path $out 'web'
 New-Item -ItemType Directory -Force $web | Out-Null
 $utf8=New-Object Text.UTF8Encoding($false)
-$scripts=Get-ChildItem (Join-Path $root 'JIZURA-main/src/*.js') | Sort-Object Name | ForEach-Object {
+$scripts=Get-ChildItem (Join-Path $upstream 'src/*.js') | Sort-Object Name | ForEach-Object {
     $s=[IO.File]::ReadAllText($_.FullName)
     if($_.Name -eq '08_planner.js') {
         if(-not $s.Contains('  extra: false,')) { throw 'JIZURA default extra setting was not found' }
@@ -20,8 +21,8 @@ $scripts=Get-ChildItem (Join-Path $root 'JIZURA-main/src/*.js') | Sort-Object Na
 }
 $js=$scripts -join "`n"
 $bridge=[IO.File]::ReadAllText((Join-Path $PSScriptRoot 'bridge.js'))
-$css=[IO.File]::ReadAllText((Join-Path $root 'JIZURA-main/app/style.css'))
-$body=[IO.File]::ReadAllText((Join-Path $root 'JIZURA-main/app/body.html'))
+$css=[IO.File]::ReadAllText((Join-Path $upstream 'app/style.css'))
+$body=[IO.File]::ReadAllText((Join-Path $upstream 'app/body.html'))
 $exportPanel=[regex]::new('<div class="easy-sec">(?=\s*<h3>[^<]*</h3>\s*<div class="fields">)')
 if($exportPanel.Matches($body).Count -ne 1) { throw 'JIZURA easy export panel was not found' }
 $body=$exportPanel.Replace($body,'<div class="easy-sec" id="aviExportPanel" hidden inert>',1)
@@ -30,14 +31,16 @@ $body=$body.Replace('<button role="tab" data-tab="out"','<button role="tab" data
 $body=$body.Replace('<div class="tabpane" data-pane="out" hidden>','<div class="tabpane" data-pane="out" hidden inert>')
 $css += "`n#btnAE,#aviExportPanel,.tabs [data-tab='out'],.tabpane[data-pane='out']{display:none!important}.tabs{grid-template-columns:repeat(3,1fr)}`n"
 $diagnostics="<script>window.addEventListener('error',function(e){var w=window.chrome&&chrome.webview;if(w)w.postMessage(JSON.stringify({type:'error',error:'UI error: '+(e.message||'unknown')+' ('+(e.filename||'')+':'+(e.lineno||0)+')'}));});window.addEventListener('unhandledrejection',function(e){var w=window.chrome&&chrome.webview;if(w)w.postMessage(JSON.stringify({type:'error',error:'UI promise error: '+String(e.reason&&e.reason.stack||e.reason)}));});</script>"
-$mux=[IO.File]::ReadAllText((Join-Path $root 'JIZURA-main/vendor/mp4-muxer.min.js'))
+$mux=[IO.File]::ReadAllText((Join-Path $upstream 'vendor/mp4-muxer.min.js'))
 [IO.File]::WriteAllText((Join-Path $web 'engine.js'),$js,$utf8)
 [IO.File]::WriteAllText((Join-Path $web 'bridge.js'),$bridge,$utf8)
-[IO.File]::WriteAllText((Join-Path $web 'editor.html'),"<!doctype html><html lang='ja'><meta charset='utf-8'><style>$css</style><body>$diagnostics$body<script>$mux</script><script src='engine.js'></script><script src='bridge.js'></script></body></html>",$utf8)
-[IO.File]::WriteAllText((Join-Path $web 'render.html'),"<!doctype html><meta charset='utf-8'><script src='engine.js'></script><script src='bridge.js'></script>",$utf8)
-Copy-Item (Join-Path $root 'JIZURA-main/LICENSE') (Join-Path $out 'LICENSE-JIZURA.txt')
-Copy-Item (Join-Path $root 'JIZURA-main/THIRD_PARTY_NOTICES.md') $out
-Copy-Item (Join-Path $root 'JIZURA-main/vendor/LICENSE.mp4-muxer.txt') $out
+$engineVersion=(Get-FileHash (Join-Path $web 'engine.js') -Algorithm SHA256).Hash.Substring(0,12)
+$bridgeVersion=(Get-FileHash (Join-Path $web 'bridge.js') -Algorithm SHA256).Hash.Substring(0,12)
+[IO.File]::WriteAllText((Join-Path $web 'editor.html'),"<!doctype html><html lang='ja'><meta charset='utf-8'><style>$css</style><body>$diagnostics$body<script>$mux</script><script src='engine.js?v=$engineVersion'></script><script src='bridge.js?v=$bridgeVersion'></script></body></html>",$utf8)
+[IO.File]::WriteAllText((Join-Path $web 'render.html'),"<!doctype html><meta charset='utf-8'><script src='engine.js?v=$engineVersion'></script><script src='bridge.js?v=$bridgeVersion'></script>",$utf8)
+Copy-Item (Join-Path $upstream 'LICENSE') (Join-Path $out 'LICENSE-JIZURA.txt')
+Copy-Item (Join-Path $upstream 'THIRD_PARTY_NOTICES.md') $out
+Copy-Item (Join-Path $upstream 'vendor/LICENSE.mp4-muxer.txt') $out
 Copy-Item (Join-Path $root 'sdk/license.txt') (Join-Path $out 'LICENSE-AviUtl2-SDK.txt')
 Copy-Item (Join-Path $root 'aviutl2-rs-main/LICENSE') (Join-Path $out 'LICENSE-aviutl2-rs.txt')
 Copy-Item (Join-Path $root 'webview2/LICENSE.txt') (Join-Path $out 'LICENSE-WebView2.txt')

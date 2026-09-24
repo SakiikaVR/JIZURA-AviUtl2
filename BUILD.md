@@ -4,12 +4,12 @@
 
 Windows x64、Visual Studio C++ Build Tools、Rust、WebView2 Runtime が必要です。
 
-ビルドスクリプトは、このリポジトリの親ディレクトリに `JIZURA-main`（[JIZURA](https://github.com/852wa/JIZURA)）、`aviutl2-rs-main`（[aviutl2-rs](https://github.com/sevenc-nanashi/aviutl2-rs)）、`sdk`（AviUtl2 Plugin SDK）、`webview2`（WebView2 SDK）を配置する構成です。`build.ps1` は同じ親ディレクトリにある `.cargo`、`.rustup`、Windows SDK のローカルコピーを使用します。
+上流の [JIZURA](https://github.com/852wa/JIZURA) は `upstream/` に同梱しています。ビルドスクリプトは、このリポジトリの親ディレクトリに `aviutl2-rs-main`（[aviutl2-rs](https://github.com/sevenc-nanashi/aviutl2-rs)）、`sdk`（AviUtl2 Plugin SDK）、`webview2`（WebView2 SDK）を配置する構成です。`build.ps1` は同じ親ディレクトリにある `.cargo`、`.rustup`、Windows SDK のローカルコピーを使用します。
 
 ```text
 作業ディレクトリ/
 ├─ JIZURA-AviUtl2/
-├─ JIZURA-main/
+│  └─ upstream/
 ├─ aviutl2-rs-main/
 ├─ sdk/
 ├─ webview2/
