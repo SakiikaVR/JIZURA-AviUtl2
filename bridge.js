@@ -14,10 +14,8 @@
   let generating=false;
   function setGenerating(value) {
     generating=value;
-    for(const id of ['avi-apply','avi-native']) {
-      const button=document.getElementById(id);
-      if(button)button.disabled=value;
-    }
+    const button=document.getElementById('avi-apply');
+    if(button)button.disabled=value;
   }
   window.aviNativeAck=(done,total,error)=>{
     const resolve=nativeAckResolve,reject=nativeAckReject;nativeAckResolve=nativeAckReject=null;
@@ -382,10 +380,9 @@
     if(!J.ui) { send({type:'ready',engine:true}); return; }
     const bar=document.createElement('div');
     bar.style.cssText='position:fixed;z-index:100000;left:0;right:0;bottom:0;padding:7px 12px;background:#202126;color:#fff;border-top:1px solid #666;display:grid;grid-template-columns:minmax(0,1fr);gap:5px;font:12px sans-serif;box-sizing:border-box';
-    bar.innerHTML='<div style="display:flex;flex-wrap:wrap;gap:6px"><button id="avi-apply" title="カットを生成し主映像として適用">適用</button><button id="avi-native" title="カットの時間に合わせて文字別のAviUtl2テキストを生成">文字レイヤー</button></div><div style="display:flex;align-items:center;gap:8px;min-width:0"><progress id="avi-progress" max="100" value="0" hidden style="width:140px;flex:0 0 140px"></progress><span id="avi-status" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1">JIZURA — AviUtl2内で編集・描画</span></div>';
+    bar.innerHTML='<div style="display:flex;flex-wrap:wrap;gap:6px"><button id="avi-apply" title="カットを生成し主映像として適用">適用</button></div><div style="display:flex;align-items:center;gap:8px;min-width:0"><progress id="avi-progress" max="100" value="0" hidden style="width:140px;flex:0 0 140px"></progress><span id="avi-status" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1">JIZURA — AviUtl2内で編集・描画</span></div>';
     document.body.appendChild(bar); document.body.style.paddingBottom='86px';
     document.getElementById('avi-apply').onclick=()=>applyMain().catch(e=>{setGenerating(false);send({type:'error',error:String(e)});});
-    document.getElementById('avi-native').onclick=()=>snapshot(false,true).catch(e=>{setGenerating(false);send({type:'error',error:String(e)});});
     send({type:'ready',engine:false});
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
