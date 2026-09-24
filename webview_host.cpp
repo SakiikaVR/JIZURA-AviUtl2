@@ -35,10 +35,15 @@ static void log(const std::string&s);
 static ComPtr<ICoreWebView2Controller> panelController;
 static ComPtr<ICoreWebView2> panelWeb;
 static bool panelReady=false;
+static unsigned editorGeneration=0;
+static unsigned editorAttempts=0;
+static ULONGLONG editorStarted=0;
+static std::wstring editorStatus=L"JIZURA を読み込んでいます…";
 
 static std::string pendingLoad;
 
-static constexpr UINT INIT_WEB=WM_APP+31, MAKE_SAMPLE=WM_APP+32, SAVE_SAMPLE=WM_APP+33, PREVIEW_STATE=WM_APP+34;
+static constexpr UINT INIT_WEB=WM_APP+31, MAKE_SAMPLE=WM_APP+32, SAVE_SAMPLE=WM_APP+33, PREVIEW_STATE=WM_APP+34, EDITOR_FAILED=WM_APP+35;
+static constexpr UINT_PTR EDITOR_TIMER=2;
 static LRESULT CALLBACK mainCursorProc(HWND h,UINT m,WPARAM w,LPARAM l,UINT_PTR id,DWORD_PTR){
     if(m==WM_NCDESTROY){RemoveWindowSubclass(h,mainCursorProc,id);if(mainWindow==h)mainWindow=nullptr;return DefSubclassProc(h,m,w,l);}
     LRESULT result=DefSubclassProc(h,m,w,l);
@@ -194,25 +199,84 @@ extern "C" void jz_exec(const char* script){if(panelWeb)panelWeb->ExecuteScript(
 extern "C" void jz_load(const char*s){pendingLoad=s;if(panelReady){panelWeb->ExecuteScript((L"aviLoad("+jsarg(pendingLoad)+L")").c_str(),nullptr);pendingLoad.clear();}ShowWindow(panel,SW_SHOW);}
 extern "C" void jz_status(const char*s){if(panelWeb)panelWeb->ExecuteScript((L"document.getElementById('avi-status').textContent="+jsarg(s)).c_str(),nullptr);log(s);}
 static void createEditor(){
+    if(!panel||!IsWindow(panel))return;
+    const unsigned generation=++editorGeneration;
+    panelReady=false;
+    editorStarted=GetTickCount64();
+    editorStatus=L"JIZURA を読み込んでいます…";
+    InvalidateRect(panel,nullptr,TRUE);
+    if(panelController)panelController->Close();
+    panelWeb.Reset();panelController.Reset();
+    SetTimer(panel,EDITOR_TIMER,1000,nullptr);
+    ++editorAttempts;
     auto options=Microsoft::WRL::Make<CoreWebView2EnvironmentOptions>();
-    CreateCoreWebView2EnvironmentWithOptions(nullptr,profile(L"Editor").c_str(),options.Get(),Callback<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler>([](HRESULT h,ICoreWebView2Environment*e)->HRESULT{
-        if(FAILED(h)||!e){log("Editor WebView2 environment failed");return S_OK;}
-        return e->CreateCoreWebView2Controller(panel,Callback<ICoreWebView2CreateCoreWebView2ControllerCompletedHandler>([](HRESULT h,ICoreWebView2Controller*c)->HRESULT{
-            if(FAILED(h)||!c){log("Editor controller failed");return S_OK;}panelController=c;c->get_CoreWebView2(&panelWeb);RECT r;GetClientRect(panel,&r);c->put_Bounds(r);
+    // The editor uses a separate WebView2 profile from the frame renderer.
+    // Software compositing avoids a blank white panel on affected GPU drivers.
+    options->put_AdditionalBrowserArguments(L"--disable-gpu");
+    HRESULT hr=CreateCoreWebView2EnvironmentWithOptions(nullptr,profile(L"Editor").c_str(),options.Get(),Callback<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler>([generation](HRESULT h,ICoreWebView2Environment*e)->HRESULT{
+        if(generation!=editorGeneration||!panel)return S_OK;
+        if(FAILED(h)||!e){log("Editor WebView2 environment failed: "+std::to_string((unsigned long)h));PostMessage(panel,EDITOR_FAILED,generation,0);return S_OK;}
+        HRESULT result=e->CreateCoreWebView2Controller(panel,Callback<ICoreWebView2CreateCoreWebView2ControllerCompletedHandler>([generation](HRESULT h,ICoreWebView2Controller*c)->HRESULT{
+            if(generation!=editorGeneration||!panel){if(c)c->Close();return S_OK;}
+            if(FAILED(h)||!c){log("Editor controller failed: "+std::to_string((unsigned long)h));PostMessage(panel,EDITOR_FAILED,generation,0);return S_OK;}
+            panelController=c;c->get_CoreWebView2(&panelWeb);RECT r;GetClientRect(panel,&r);c->put_Bounds(r);c->put_IsVisible(FALSE);
+            ComPtr<ICoreWebView2Controller2> controller2;
+            if(SUCCEEDED(c->QueryInterface(IID_PPV_ARGS(&controller2)))){
+                COREWEBVIEW2_COLOR background{255,24,24,24};controller2->put_DefaultBackgroundColor(background);
+            }
             EventRegistrationToken tok;
-            panelWeb->add_WebMessageReceived(Callback<ICoreWebView2WebMessageReceivedEventHandler>([](ICoreWebView2*,ICoreWebView2WebMessageReceivedEventArgs*a)->HRESULT{
-                try{auto m=webMessage(a);if(m.value("type","")=="ready"){panelReady=true;log("Editor ready");if(!pendingLoad.empty()){auto s=pendingLoad;jz_load(s.c_str());}}
+            panelWeb->add_NavigationCompleted(Callback<ICoreWebView2NavigationCompletedEventHandler>([generation](ICoreWebView2*,ICoreWebView2NavigationCompletedEventArgs*a)->HRESULT{
+                if(generation!=editorGeneration)return S_OK;
+                BOOL success=FALSE;a->get_IsSuccess(&success);
+                if(!success){COREWEBVIEW2_WEB_ERROR_STATUS status{};a->get_WebErrorStatus(&status);log("Editor navigation failed: "+std::to_string((int)status));PostMessage(panel,EDITOR_FAILED,generation,0);}
+                return S_OK;
+            }).Get(),&tok);
+            panelWeb->add_ProcessFailed(Callback<ICoreWebView2ProcessFailedEventHandler>([generation](ICoreWebView2*,ICoreWebView2ProcessFailedEventArgs*a)->HRESULT{
+                if(generation!=editorGeneration)return S_OK;
+                COREWEBVIEW2_PROCESS_FAILED_KIND kind{};a->get_ProcessFailedKind(&kind);
+                log("Editor process failed: "+std::to_string((int)kind));PostMessage(panel,EDITOR_FAILED,generation,0);return S_OK;
+            }).Get(),&tok);
+            panelWeb->add_WebMessageReceived(Callback<ICoreWebView2WebMessageReceivedEventHandler>([generation](ICoreWebView2*,ICoreWebView2WebMessageReceivedEventArgs*a)->HRESULT{
+                if(generation!=editorGeneration)return S_OK;
+                try{auto m=webMessage(a);if(m.value("type","")=="ready"){
+                        panelReady=true;editorAttempts=0;KillTimer(panel,EDITOR_TIMER);
+                        panelController->put_IsVisible(TRUE);panelController->NotifyParentWindowPositionChanged();
+                        log("Editor ready");if(!pendingLoad.empty()){auto s=pendingLoad;jz_load(s.c_str());}}
                     if(onMessage){auto s=m.dump();onMessage(s.c_str());}
                 }catch(const std::exception&e){log(e.what());}return S_OK;
             }).Get(),&tok);
-            try{webSetup(panelWeb.Get(),L"editor.html");}catch(const std::exception&e){log(e.what());}return S_OK;
+            try{webSetup(panelWeb.Get(),L"editor.html");}catch(const std::exception&e){log(e.what());PostMessage(panel,EDITOR_FAILED,generation,0);}return S_OK;
         }).Get());
+        if(FAILED(result)){log("Editor controller request failed: "+std::to_string((unsigned long)result));PostMessage(panel,EDITOR_FAILED,generation,0);}
+        return S_OK;
     }).Get());
+    if(FAILED(hr)){log("Editor environment request failed: "+std::to_string((unsigned long)hr));PostMessage(panel,EDITOR_FAILED,generation,0);}
 }
 static LRESULT CALLBACK editorProc(HWND h,UINT m,WPARAM w,LPARAM l){
     if(m==INIT_WEB){createEditor();return 0;}
+    if(m==EDITOR_FAILED){
+        if(w!=editorGeneration)return 0;
+        if(editorAttempts<2){createEditor();}
+        else {KillTimer(h,EDITOR_TIMER);panelReady=false;
+            if(panelController)panelController->put_IsVisible(FALSE);
+            editorStatus=L"JIZURA を表示できませんでした。クリックして再試行してください。";
+            InvalidateRect(h,nullptr,TRUE);}
+        return 0;
+    }
+    if(m==WM_TIMER&&w==EDITOR_TIMER){
+        if(!panelReady&&GetTickCount64()-editorStarted>15000){log("Editor startup timed out");PostMessage(h,EDITOR_FAILED,editorGeneration,0);}
+        return 0;
+    }
     if(m==PREVIEW_STATE){previewActive=w!=0;if(previewActive)attachMainCursor();return 0;}
-    if(m==WM_SIZE&&panelController){RECT r;GetClientRect(h,&r);panelController->put_Bounds(r);return 0;}
+    if(m==WM_SIZE){if(panelController){RECT r;GetClientRect(h,&r);panelController->put_Bounds(r);panelController->NotifyParentWindowPositionChanged();}return 0;}
+    if(m==WM_SHOWWINDOW&&w&&panelController){panelController->NotifyParentWindowPositionChanged();return 0;}
+    if(m==WM_LBUTTONUP&&!panelReady&&editorAttempts>=2){editorAttempts=0;createEditor();return 0;}
+    if(m==WM_ERASEBKGND)return 1;
+    if(m==WM_PAINT){PAINTSTRUCT ps{};HDC dc=BeginPaint(h,&ps);RECT r;GetClientRect(h,&r);
+        HBRUSH background=CreateSolidBrush(RGB(24,24,24));FillRect(dc,&r,background);DeleteObject(background);
+        SetBkMode(dc,TRANSPARENT);SetTextColor(dc,RGB(235,235,235));
+        DrawTextW(dc,editorStatus.c_str(),-1,&r,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+        EndPaint(h,&ps);return 0;}
     if(m==MAKE_SAMPLE){if(panelReady)jz_exec("aviSample()");return 0;}
     if(m==SAVE_SAMPLE){if(onMessage)onMessage("{\"type\":\"saveSample\"}");return 0;}
     return DefWindowProc(h,m,w,l);
@@ -224,4 +288,4 @@ extern "C" HWND jz_panel(void(*callback)(const char*)){
 extern "C" void jz_sample(){PostMessage(panel,MAKE_SAMPLE,0,0);}
 extern "C" void jz_preview_state(bool active){PostMessage(panel,PREVIEW_STATE,active?1:0,0);}
 extern "C" void jz_defer_save(){PostMessage(panel,SAVE_SAMPLE,0,0);}
-extern "C" void jz_shutdown(){renderHost.reset();if(panelController)panelController->Close();panelWeb.Reset();panelController.Reset();if(panel)DestroyWindow(panel);panel=nullptr;panelReady=false;}
+extern "C" void jz_shutdown(){renderHost.reset();++editorGeneration;if(panel)KillTimer(panel,EDITOR_TIMER);if(panelController)panelController->Close();panelWeb.Reset();panelController.Reset();if(panel)DestroyWindow(panel);panel=nullptr;panelReady=false;}
