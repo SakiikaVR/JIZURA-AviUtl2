@@ -9,6 +9,12 @@
   </a>
 </p>
 
+<p align="center">
+  <img src="docs/preview.png" alt="AviUtl2で動作するJIZURAのプレビュー" width="900">
+</p>
+
+https://github.com/user-attachments/assets/aaea6fbc-d10e-4c81-b263-32d661f21e74
+
 [8co28様のJIZURA](https://github.com/852wa/JIZURA) の編集画面と描画エンジンを AviUtl2 内で使う Windows 用プラグインです。歌詞やスタイルを決めて「適用」を押すと、カットをタイムラインに並べて主映像にする非公式フォークです。
 
 現在のリリースは **v0.3.1** です。
