@@ -1,19 +1,43 @@
-﻿# JIZURA for AviUtl2
+# JIZURA for AviUtl2
 
-JIZURA の編集画面を AviUtl2 内で動かすプラグインです。「適用」でカットごとの映像オブジェクトを生成し、主映像に設定します。各カットの文字や演出は AviUtl2 の設定画面から編集できます。
+<p align="center">
+  <a href="https://github.com/SakiikaVR/JIZURA-AviUtl2/releases/latest">
+    <img src="https://img.shields.io/github/v/release/SakiikaVR/JIZURA-AviUtl2?style=for-the-badge&label=%E2%AC%87%20Download&color=ff9f0a" alt="最新版をダウンロード">
+  </a>
+  <a href="LICENSE">
+    <img src="https://img.shields.io/badge/License-MIT-blue?style=for-the-badge" alt="MIT License">
+  </a>
+</p>
 
-## ネイティブレイヤー
+[JIZURA](https://github.com/852wa/JIZURA) の編集画面と描画エンジンを AviUtl2 内で使う Windows 用プラグインです。歌詞やスタイルを決めて「適用」を押すと、カットをタイムラインに並べて主映像にします。
 
-「適用」を押すと、カット別映像オブジェクトをタイムラインの 1 レイヤーに時間順で生成し、最後に共有レイヤーを一度だけ有効にして主映像に設定します。元の全尺オブジェクトは生成しません。各オブジェクトの名前にはカットの文字を使い、HUD・音声・編集データもカット側に保持します。タイムラインでカットを選ぶと、AviUtl2 の設定画面で「カット文字」と演出のプルダウンを編集できます。色、見出し・明朝枠・小さな文字のフォント、動きの強さから背景の切替までの数値、フラッシュも設定できます。AviUtl2 側の「適用」は、選択したカットの色・フォント・数値を共通設定として取り込み、入力した BPM とともに全カットを再生成します。再適用時には旧版の全尺オブジェクトも取り除きます。
+現在のリリースは **v0.3.1** です。
 
-追加分の演出はエンジンと AviUtl2 のプルダウンに含まれています。AviUtl2 版では新規プロジェクトの「追加分の演出も使う」を初期状態でオンにし、おまかせ・シャッフルの候補にも加えます。既存プロジェクトに保存されたオン・オフは維持します。
+## 特長
 
-## 再生性能
-
-描画フレームはWebView2の共有バッファからAviUtl2へ直接渡します。PNGへの変換とPNGデコードは使用しません。この環境の1920×1080サンプルでは、カット単独描画が約72ms/フレームでした。描画専用キャンバスは画素の再現性と速度を確認したCPUモードを使用します。実際の速度はスタイル、カット数、PCの性能で変わります。
-
-再生中にAviUtl2のプレビュー上で待機カーソルが表示される場合は、プラグインがそのカーソルだけを通常の矢印に戻します。再生を止めると通常のカーソル処理に戻ります。
+- カットごとの映像オブジェクトをタイムラインの **1 レイヤー** に時間順で配置
+- カットの文字、レイアウト、演出、色、フォント、数値を AviUtl2 の設定画面から編集
+- BPM などの共通設定を入力し、「適用」で全カットへ反映
+- HUD、音声、編集データをカット側に保持し、元の全尺オブジェクトを生成しない構成
+- WebView2 の共有バッファからフレームを渡し、PNG 変換を使わずにプレビュー
+- 「追加分の演出も使う」を新規プロジェクトでは初期状態でオン
 
 ## インストール
 
-[Releases](https://github.com/SakiikaVR/JIZURA-AviUtl2/releases) の ZIP をダウンロードして展開します。AviUtl2 を終了し、ZIP 内の `JIZURA.aux2` と `web` フォルダーを `C:\ProgramData\aviutl2\Plugin\JIZURA` に配置して起動します。パネルは「ウィンドウ」から JIZURA を開きます。AviUtl2 のプラグイン内では書き出しUIを表示しません。動画の書き出しは AviUtl2 から行います。
+動作対象は **Windows x64、AviUtl2、WebView2 Runtime** です。
+
+1. [最新リリース](https://github.com/SakiikaVR/JIZURA-AviUtl2/releases/latest) から ZIP をダウンロードし、展開します。
+2. 作業中のプロジェクトを保存して AviUtl2 を終了します。
+3. ZIP 内の `JIZURA.aux2` と `web` フォルダーを `C:\ProgramData\aviutl2\Plugin\JIZURA` に配置します。
+4. AviUtl2 を起動し、「ウィンドウ」から JIZURA パネルを開きます。
+
+## 操作
+
+| 操作 | 結果 |
+|---|---|
+| JIZURA パネルで歌詞・スタイルを編集 | カット構成を作成 |
+| パネル下部の「適用」を押す | カットを 1 レイヤーに生成して主映像に設定 |
+| タイムラインでカットを選ぶ | AviUtl2 の設定画面で文字や演出を編集 |
+| 共通 BPM を入力して AviUtl2 側の「適用」を押す | 共通設定でカットを再生成 |
+
+動画の書き出しは AviUtl2 から行います。AviUtl2 版の JIZURA パネルには AE 用・MP4 用の書き出しボタンを表示しません。
