@@ -2,8 +2,6 @@
 
 JIZURA の編集画面を AviUtl2 内で動かすプラグインです。「適用」でカットごとの映像オブジェクトを生成し、主映像に設定します。各カットの文字や演出は AviUtl2 の設定画面から編集できます。
 
-[概要](README.md) · [ビルド Wiki](https://github.com/SakiikaVR/JIZURA-AviUtl2/wiki/Build)
-
 ## ネイティブレイヤー
 
 「適用」を押すと、カット別映像オブジェクトをタイムラインの 1 レイヤーに時間順で生成し、最後に共有レイヤーを一度だけ有効にして主映像に設定します。元の全尺オブジェクトは生成しません。各オブジェクトの名前にはカットの文字を使い、HUD・音声・編集データもカット側に保持します。タイムラインでカットを選ぶと、AviUtl2 の設定画面で「カット文字」と演出のプルダウンを編集できます。色、見出し・明朝枠・小さな文字のフォント、動きの強さから背景の切替までの数値、フラッシュも設定できます。AviUtl2 側の「適用」は、選択したカットの色・フォント・数値を共通設定として取り込み、入力した BPM とともに全カットを再生成します。再適用時には旧版の全尺オブジェクトも取り除きます。
@@ -19,11 +17,3 @@ JIZURA の編集画面を AviUtl2 内で動かすプラグインです。「適�
 ## インストール
 
 [Releases](https://github.com/SakiikaVR/JIZURA-AviUtl2/releases) の ZIP をダウンロードして展開します。AviUtl2 を終了し、ZIP 内の `JIZURA.aux2` と `web` フォルダーを `C:\ProgramData\aviutl2\Plugin\JIZURA` に配置して起動します。パネルは「ウィンドウ」から JIZURA を開きます。AviUtl2 のプラグイン内では書き出しUIを表示しません。動画の書き出しは AviUtl2 から行います。
-
-## ビルド
-
-ビルド手順は [Wiki のビルドページ](https://github.com/SakiikaVR/JIZURA-AviUtl2/wiki/Build) に記載しています。ソースにも [BUILD.md](BUILD.md) を置いています。
-
-## ライセンス
-
-このプラグインと上流 JIZURA は MIT License です。著作権表示は [LICENSE](LICENSE) に、配布物に含まれる依存物のライセンスと通知は ZIP 内の `licenses` に記載しています。上流プロジェクト: <https://github.com/852wa/JIZURA/>
