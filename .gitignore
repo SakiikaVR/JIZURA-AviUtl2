@@ -1,0 +1,11 @@
+/target/
+/dist/
+/release/
+/*.log
+/*.obj2
+/*.png
+/json.hpp
+/plugin.cpp
+/catalog.json
+/install-when-closed.ps1
+/ui-check.ps1
