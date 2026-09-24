@@ -25,4 +25,4 @@ cd JIZURA-AviUtl2
 .\package.ps1
 ```
 
-ビルドしたプラグインは `dist/JIZURA.aux2`、配布 ZIP は `release/JIZURA-AviUtl2-v0.3.1.zip` に作成されます。配布 ZIP の利用者には、これらのビルド用ディレクトリは必要ありません。
+ビルドしたプラグインは `dist/JIZURA.aux2`、配布 ZIP は `release/JIZURA-AviUtl2-v1.3.zip` に作成されます。配布 ZIP の利用者には、これらのビルド用ディレクトリは必要ありません。

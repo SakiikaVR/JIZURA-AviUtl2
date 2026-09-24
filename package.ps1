@@ -3,7 +3,7 @@ Add-Type -AssemblyName System.IO.Compression
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 
 $root = $PSScriptRoot
-$version = '0.3.1'
+$version = '1.3'
 $releaseDir = Join-Path $root 'release'
 New-Item -ItemType Directory -Force -Path $releaseDir | Out-Null
 $zipPath = Join-Path $releaseDir "JIZURA-AviUtl2-v$version.zip"
