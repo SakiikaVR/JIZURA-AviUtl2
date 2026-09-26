@@ -781,6 +781,24 @@ fn apply_mode(m:&Value)->AnyResult<()> {
 }
 aviutl2::register_generic_plugin!(JizuraPlugin);
 
+/// Generate the native filter dropdown catalog from the vendored browser engine.
+pub fn export_catalog(base:&std::path::Path)->AnyResult<()> {
+    let dist=base.join("dist");
+    let wide:Vec<u16>=dist.to_string_lossy().encode_utf16().chain(Some(0)).collect();
+    unsafe{jz_init(wide.as_ptr());}
+    let request=B64.encode(r#"{"version":1,"catalogOnly":true}"#);
+    let frame=unsafe{jz_render(c(&request).as_ptr(),0.,false)};
+    if frame.is_null(){bail!("Catalog export failed: {}",unsafe{CStr::from_ptr(jz_error())}.to_string_lossy());}
+    unsafe{jz_free_frame(frame);}
+    let data=std::fs::read(dist.join("audit-catalog.json"))?;
+    let catalog:Value=serde_json::from_slice(&data)?;
+    ensure!(catalog["group"]=="catalog","Unexpected catalog response");
+    let target=base.join("catalog.json");
+    std::fs::write(&target,serde_json::to_vec_pretty(&catalog)?)?;
+    println!("Updated {}",target.display());
+    Ok(())
+}
+
 /// Standalone integration check, using the same WebView renderer as the plugin.
 pub fn smoke_test(base:&std::path::Path)->AnyResult<()> {
     let wide:Vec<u16>=base.to_string_lossy().encode_utf16().chain(Some(0)).collect();unsafe{jz_init(wide.as_ptr());}

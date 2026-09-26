@@ -40,15 +40,38 @@ J.addUserFont = (key, label, family, weight = 400, kind = 'custom') => {
   J.FONTS[key] = { label, family: `"${family.replace(/"/g, '')}"`, weight, kind, fb: JP_SANS_FB, user: true };
   J.glyphs.clear();
 };
+/* only plain keys / family names ever reach the page (project files are untrusted input) */
+J.SAFE_FONT_KEY = /^user_[A-Za-z0-9_-]{1,80}$/;
+J.safeFamily = s => String(s || '').replace(/[^\w\- ]/g, '_').slice(0, 80);
 J.loadFontFile = async (file) => {
   const buf = await file.arrayBuffer();
-  const fam = 'UF_' + file.name.replace(/\.[^.]+$/, '').replace(/[^\w]/g, '_');
+  const fam = 'UF_' + file.name.replace(/\.[^.]+$/, '').replace(/[^\w]/g, '_').slice(0, 60);
   const ff = new FontFace(fam, buf);
   await ff.load(); document.fonts.add(ff);
-  const key = 'user_' + fam;
-  J.addUserFont(key, file.name.replace(/\.[^.]+$/, ''), fam, 400, 'custom');
-  return key;
+  const key = 'user_' + fam, label = file.name.replace(/\.[^.]+$/, '').slice(0, 80);
+  J.addUserFont(key, label, fam, 400, 'custom');
+  J.FONTS[key].loaded = true;
+  if (J.saveFontData) J.saveFontData(key, buf);        // kept in this browser, so a reload keeps the face
+  return { key, label, family: fam, weight: 400 };
 };
+/* uploaded faces of a project: register them from this browser's copy; returns the labels that are not available */
+J.restoreUserFonts = async (list) => {
+  const missing = [];
+  for (const uf of list || []) {
+    const f = J.FONTS[uf.key];
+    if (f && f.loaded) continue;
+    let ok = false;
+    try {
+      const buf = J.loadFontData ? await J.loadFontData(uf.key) : null;
+      if (buf) { const ff = new FontFace(J.safeFamily(uf.family), buf); await ff.load(); document.fonts.add(ff); ok = true; }
+    } catch (e) { ok = false; }
+    if (ok && J.FONTS[uf.key]) { J.FONTS[uf.key].loaded = true; J.glyphs.clear(); J.metrics.clear(); }
+    else missing.push(uf.label || uf.family || uf.key);
+  }
+  return missing;
+};
+/* uploaded faces the plan draws with but this page does not have */
+J.missingUserFonts = (keys) => (keys || []).filter(k => J.FONTS[k] && J.FONTS[k].user && !J.FONTS[k].loaded).map(k => J.FONTS[k].label);
 
 J.fontCSS = (key, px) => {
   const f = J.faceOf ? J.faceOf(key) : (J.FONTS[key] || J.FONTS.gothic_bold);   // per-language face (02b_lang.js)
@@ -79,12 +102,18 @@ J.fontsOfPlan = (plan) => {
     if (typeof v === 'string' && J.FONTS[v]) set.add(v);
     else if (Array.isArray(v)) v.forEach(x => { if (typeof x === 'string' && J.FONTS[x]) set.add(x); });
   }
-  return [...set].filter(k => J.FONTS[k]);
+  const out = [...set].filter(k => J.FONTS[k]);
+  if ((plan.cuts || []).some(c => c.weightGrow)) out.push('@var');     // 太さ: the variable Noto Sans / Serif JP
+  return out;
 };
 /* make sure the glyphs we need are loaded (Google Fonts are unicode-range split). keys = null → every catalogue face */
 J.ensureFonts = async (text, keys) => {
   if (!document.fonts || !document.fonts.load) return;
   const uniq = [...new Set([...text])].join('') || 'あ';
+  if (keys && keys.includes('@var')) {
+    await Promise.all(['Noto+Sans+JP:wght@100..900', 'Noto+Serif+JP:wght@200..900'].map(attachFamily));
+    await Promise.all(['100 64px "Noto Sans JP"', '900 64px "Noto Sans JP"', '200 64px "Noto Serif JP"', '900 64px "Noto Serif JP"'].map(f => document.fonts.load(f, uniq).catch(() => null)));
+  }
   const list = (keys || Object.keys(J.FONTS)).filter(k => J.FONTS[k]);
   // faces in the current lyric language (+ its fallback sans / serif), each with the weight it is drawn at
   const faces = list.map(k => (J.faceOf ? J.faceOf(k) : J.FONTS[k]));

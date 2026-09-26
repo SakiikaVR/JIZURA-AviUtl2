@@ -27,6 +27,8 @@ $js=$scripts -join "`n"
 $bridge=[IO.File]::ReadAllText((Join-Path $PSScriptRoot 'bridge.js'))
 $css=[IO.File]::ReadAllText((Join-Path $upstream 'app/style.css'))
 $body=[IO.File]::ReadAllText((Join-Path $upstream 'app/body.html'))
+$upstreamVersion=[IO.File]::ReadAllText((Join-Path $upstream 'VERSION')).Trim()
+$body=$body.Replace('@VERSION@',$upstreamVersion)
 $exportPanel=[regex]::new('<div class="easy-sec">(?=\s*<h3>[^<]*</h3>\s*<div class="fields">)')
 if($exportPanel.Matches($body).Count -ne 1) { throw 'JIZURA easy export panel was not found' }
 $body=$exportPanel.Replace($body,'<div class="easy-sec" id="aviExportPanel" hidden inert>',1)
