@@ -894,7 +894,7 @@ function renderColors() {
     keys.forEach(([k, label]) => {
       const l = document.createElement('label');
       const v = (c[flag] && c[k]) || c[k] || sc[k];
-      l.innerHTML = `${label}<input type="color" value="${toColorInput(v)}">`;
+      l.innerHTML = `${escapeHtml(label)}<input type="color" value="${toColorInput(v)}">`;
       l.querySelector('input').addEventListener('input', e => {
         c[k] = e.target.value.toUpperCase();
         if (!c[flag]) { c[flag] = true; $(flag === 'enabled' ? 'colorOn' : 'accentOn').checked = true; }
